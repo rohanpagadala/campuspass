@@ -1,0 +1,37 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+*.db
+
+# Env / secrets - never commit real values, only *.example files
+.env
+.env.*
+!.env.example
+backend-test-results.xml
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/*.local
+frontend/.vite/
+npm-debug.log*
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Ansible
+ansible/*.retry
+ansible/.ansible/
+
+# Kubernetes / local cluster artifacts
+kubeconfig
+*.kubeconfig
