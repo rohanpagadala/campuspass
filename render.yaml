@@ -22,11 +22,11 @@ services:
       # seed the real accounts, never the password123 demo ones.
       - key: ENVIRONMENT
         value: production
-      # Read by `python -m scripts.seed` (run once by hand via the Render
-      # shell after first deploy - see instructions.md) to set each real
-      # account's initial password. generateValue gives each a strong
-      # random value automatically; view them in the Render dashboard's
-      # environment tab, or override before first seeding.
+      # Read by the SEED_ON_STARTUP bootstrap (see app/main.py) to set each
+      # real account's initial password - Render's free tier has no shell,
+      # so there's no way to run `python -m scripts.seed` by hand. generateValue
+      # gives each a strong random value automatically; override before first
+      # deploy if you want to choose your own instead.
       - key: SEED_ADMIN_PASSWORD
         generateValue: true
       - key: SEED_TEACHER_PASSWORD
@@ -35,24 +35,27 @@ services:
         generateValue: true
       - key: SEED_SECURITY_PASSWORD
         generateValue: true
-      # One-time bootstrap flag (see app/main.py) - set to "true" for a
-      # single deploy to create the real accounts on a platform with no
-      # shell access, then flip back to "false" so it doesn't reseed (a
-      # no-op, but a wasteful one) on every restart.
+      # One-time bootstrap flag (see app/main.py) - "true" for exactly one
+      # deploy to create the real accounts (their passwords then appear in
+      # this service's deploy logs - that's the only place to read them on a
+      # shell-less platform), then flip back to "false" so it doesn't keep
+      # re-running (a no-op once the accounts exist, but a wasteful one) on
+      # every subsequent restart.
       - key: SEED_ON_STARTUP
-        value: "true"
+        value: "false"
       - key: CORS_ORIGINS
         fromService:
           type: web
           name: campuspass-frontend
           property: host
-        # Render's `fromService` hostname has no scheme prefix; this value
-        # needs a one-time manual edit after first deploy to
-        # "https://<that-hostname>" in the Render dashboard. It's not on the
-        # critical path either way - the frontend never calls the backend
-        # cross-origin (nginx proxies /api/* server-side), so CORS only
-        # matters for direct API access (e.g. Swagger UI, a future API
-        # client), not the app itself.
+        # Same fromService caveat as BACKEND_HOST_SUFFIX below: this
+        # resolves to just the frontend's internal slug, with neither a
+        # scheme nor the .onrender.com suffix. Not on the critical path -
+        # the frontend never calls the backend cross-origin (nginx proxies
+        # /api/* server-side), so CORS only matters for direct API access
+        # (e.g. Swagger UI, a future API client) - but if you need it
+        # correct, edit it in the Render dashboard to
+        # "https://<frontend-service>.onrender.com" after first deploy.
 
   - type: web
     name: campuspass-frontend

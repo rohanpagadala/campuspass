@@ -226,11 +226,29 @@ minikube stop
 
 ### 4d. Public Render URL
 
-The app is designed to deploy to Render's free tier using `render.yaml` in
-this repo (a "Blueprint"). **How it's deployed:** push this repo to GitHub,
-then in the Render dashboard choose "New +" → "Blueprint", point it at your
-GitHub repo, and Render reads `render.yaml` to create the database and both
+**Live app:** https://campuspass-frontend.onrender.com
+**Backend health check:** https://campuspass-backend-mzx8.onrender.com/health
+
+The real accounts (Admin/Teacher/Student/`security1`) are already seeded
+there — log in with the emails/username from Section 3 and the passwords
+in `CREDENTIALS.md` under "Render (public deployment)".
+
+**How it was deployed:** the repo was pushed to GitHub, then in the Render
+dashboard: "New +" → "Blueprint" → pointed at the GitHub repo → Apply.
+Render read `render.yaml` and created the Postgres database and both
 services automatically.
+
+**How the accounts got seeded with no shell access:** Render's free tier
+doesn't offer a shell, so `python -m scripts.seed` can't be run directly
+after deploy. Instead, `app/main.py` has a `SEED_ON_STARTUP` env-var-guarded
+bootstrap — set to `"true"` for exactly one deploy, it seeded the real
+accounts automatically when the app started, printing each new password to
+that deploy's logs (the only place to read them on a platform with no
+shell). It's since been flipped back to `"false"` in `render.yaml` so it
+doesn't keep re-running (harmlessly, since it's idempotent, but
+unnecessarily) on every restart. To add a brand-new account later this way
+again, you'd flip it back to `"true"` for one deploy via the Render
+dashboard's environment tab, then back to `"false"`.
 
 **How to redeploy** after a code change: push to your repo's `main`
 branch — if you've connected GitHub Actions deploy hooks (see Section 6),
@@ -239,9 +257,19 @@ dashboard ("Manual Deploy" on each service).
 
 **Waking it up before a demo:** Render's free tier puts a service to sleep
 after a period of no traffic, and the next request takes roughly 30-60
-seconds to wake it. Before showing anyone the app, open the backend's
-health URL once (e.g. `https://<your-backend>.onrender.com/health`) and
-wait for a response before moving on.
+seconds to wake it. Before showing anyone the app, open
+https://campuspass-backend-mzx8.onrender.com/health once and wait for a
+response before moving on.
+
+**A real gotcha hit during this deployment, in case it recurs:** the
+frontend's nginx proxies `/api/*` to the backend using an address Render
+gives it (`BACKEND_HOST`) — but that value is just the backend's internal
+slug (e.g. `campuspass-backend-mzx8`), not a complete public hostname, and
+Render's edge routing is Host-header-based. Both are already handled in
+`frontend/nginx.conf.template` (a `BACKEND_HOST_SUFFIX` completes the
+hostname, and the Host header sent upstream is the backend's own, not the
+frontend's) - mentioned here only so a future "frontend loads but /api
+calls 502" mystery doesn't have to be re-diagnosed from scratch.
 
 ---
 

@@ -259,10 +259,10 @@ breakdown and the reasoning behind each tool.
 
 ## Deployment
 
-- **Public URL (Render):** see the note at the end of this README —
-  deploying requires a `RENDER_API_KEY` that wasn't available in the
-  environment this was built in; the one-time steps to finish it are listed
-  there.
+- **Public URL (Render):** https://campuspass-frontend.onrender.com — live,
+  seeded with the real accounts (credentials in the gitignored
+  `CREDENTIALS.md`; see `instructions.md` §4d for how it was deployed and
+  seeded with no shell access).
 - **Local cluster:** deployed and verified live on Minikube during
   development (full 4-role lifecycle, zero console errors) — see
   `docs/devops.md` and the Kubernetes section above to reproduce it.
@@ -271,5 +271,5 @@ breakdown and the reasoning behind each tool.
 
 Render's free tier spins a service down after a period of inactivity and
 takes roughly 30-60 seconds to wake back up on the next request. Hit
-`/api/health` once a minute or so before an actual demo to warm it up —
-see `docs/demo-script.md`.
+https://campuspass-backend-mzx8.onrender.com/health once before an actual
+demo to warm it up — see `docs/demo-script.md`.
