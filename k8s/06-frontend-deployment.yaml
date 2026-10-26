@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: campuspass-frontend
+  namespace: campuspass
+  labels:
+    app: campuspass-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: campuspass-frontend
+  template:
+    metadata:
+      labels:
+        app: campuspass-frontend
+    spec:
+      containers:
+        - name: campuspass-frontend
+          # Replace DOCKERHUB_USERNAME with a real Docker Hub namespace for
+          # a real cluster; see the backend Deployment's note for the local
+          # minikube alternative.
+          image: DOCKERHUB_USERNAME/campuspass-frontend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          env:
+            - name: BACKEND_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: campuspass-config
+                  key: BACKEND_HOST
+            - name: BACKEND_SCHEME
+              valueFrom:
+                configMapKeyRef:
+                  name: campuspass-config
+                  key: BACKEND_SCHEME
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          # nginx has no dedicated /health route (it serves the SPA and
+          # proxies /api/*) - root `/` is the equivalent signal that it's up
+          # and serving, mirroring the Dockerfile's own HEALTHCHECK.
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            timeoutSeconds: 3

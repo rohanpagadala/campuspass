@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: campuspass-backend
+  namespace: campuspass
+spec:
+  type: ClusterIP
+  selector:
+    app: campuspass-backend
+  ports:
+    - port: 8000
+      targetPort: 8000

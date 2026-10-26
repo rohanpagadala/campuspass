@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: campuspass-backend
+  namespace: campuspass
+  labels:
+    app: campuspass-backend
+spec:
+  replicas: 1 # SQLite on a single ReadWriteOnce volume - don't scale this past 1
+  selector:
+    matchLabels:
+      app: campuspass-backend
+  template:
+    metadata:
+      labels:
+        app: campuspass-backend
+    spec:
+      # The backend image runs as a non-root user (uid/gid 999 - see
+      # Dockerfile). Most CSI/hostpath provisioners mount a fresh PVC
+      # root-owned by default, which would make /code/data unwritable for
+      # that user. fsGroup makes Kubernetes chgrp the volume to gid 999 and
+      # group-writable on mount, so the app user can actually write the
+      # SQLite file there.
+      securityContext:
+        fsGroup: 999
+      containers:
+        - name: campuspass-backend
+          # Replace DOCKERHUB_USERNAME with a real Docker Hub namespace for
+          # a real cluster. For local minikube testing, build the image into
+          # minikube's own Docker daemon instead (see docs/devops.md) and
+          # `kubectl set image` to point at the locally-built tag.
+          image: DOCKERHUB_USERNAME/campuspass-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: campuspass-config
+          env:
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: campuspass-secret
+                  key: SECRET_KEY
+          volumeMounts:
+            - name: backend-data
+              mountPath: /code/data
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 3
+      volumes:
+        - name: backend-data
+          persistentVolumeClaim:
+            claimName: campuspass-backend-data

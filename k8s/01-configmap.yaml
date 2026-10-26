@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: campuspass-config
+  namespace: campuspass
+data:
+  DATABASE_URL: "sqlite:////code/data/campuspass.db"
+  # Not actually needed for in-cluster traffic (the frontend's nginx proxies
+  # /api/* to the backend Service same-namespace, so the browser only ever
+  # talks to the frontend's own origin) - kept for direct/cross-origin access
+  # to the backend Service's NodePort or an Ingress, if one is added later.
+  CORS_ORIGINS: "http://localhost:30080"
+  # In-cluster DNS name for the backend Service, consumed by the frontend's
+  # nginx container exactly like docker-compose's BACKEND_HOST.
+  BACKEND_HOST: "campuspass-backend:8000"
+  BACKEND_SCHEME: "http"
