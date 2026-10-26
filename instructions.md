@@ -182,6 +182,27 @@ Confirm: the terminal prints a `Local: http://localhost:5173/` line.
 
 **Stop it:** `Ctrl+C` in each terminal.
 
+### Camera scanning
+
+Security staff can scan an approved student's QR code directly from the
+**Scan with camera** tab on the gate scanner page. Camera access is available
+only on an `https://` page or on `http://localhost`/`http://127.0.0.1`; browsers
+intentionally block camera access on ordinary insecure network URLs.
+
+To test on a phone, deploy or tunnel the frontend over HTTPS, open the URL in
+Safari on iOS or Chrome on Android, sign in as the Security account, open the
+Gate Scanner, choose **Scan with camera**, and press **Start camera**. Allow
+camera access when prompted. The rear camera is selected by default; use
+**Switch camera** when more than one camera is available. If the browser
+remembers a denial, open the site's browser/phone settings, enable Camera for
+the site, reload the page, and press **Start camera** again.
+
+If there is no camera, the permission remains denied, another app is using the
+camera, or the page is not HTTPS, the scanner explains the problem and the
+**Enter code manually** tab remains available. Security can paste the full QR
+token or enter the student's six-character short code; it uses the same
+verification action as camera scanning.
+
 ### 4c. Minikube (Kubernetes)
 
 ```bash
