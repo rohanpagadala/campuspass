@@ -38,8 +38,14 @@ an env var on the proxy, not baked into the JS bundle.
 ## Data model
 
 **User** — `id, username, hashed_password, role (student|teacher|security|hod),
-full_name, email, is_active, created_at`. `is_active=False` blocks both new
-logins and any still-valid existing token on its next request.
+full_name, email, is_active, created_at`. `email` is required, unique, and
+normalized to lowercase on write (Pydantic `field_validator`); `/auth/login`
+accepts either the username or the email (case-insensitive on the email
+side) as the identifier. `is_active=False` blocks both new logins and any
+still-valid existing token on its next request. A logged-in user can replace
+their own password via `POST /auth/change-password` (current password +
+new, min 8 chars) — surfaced as a "Change password" control in the shared
+dashboard header for every role.
 
 **Outpass** — the core lifecycle record.
 

@@ -6,6 +6,11 @@ exit credential (a signed, time-limited QR code — or a 6-character code as
 a fallback when scanning isn't reliable) is checked by security at the gate,
 single-use.
 
+**New to this project? Start with [`instructions.md`](instructions.md)** —
+a beginner-friendly, copy-paste walkthrough covering setup, accounts,
+every way to run the app, a full test checklist, and troubleshooting. The
+rest of this README is the shorter technical reference.
+
 ## Architecture
 
 ```mermaid
@@ -74,8 +79,8 @@ app/                 FastAPI backend
   qr_tokens.py          QR JWT + short-code generation/verification
   routers/              auth.py, outpass.py, hod.py, security.py
 scripts/
-  seed.py               dev-only test account seeding
-tests/                  pytest suite (59 tests)
+  seed.py               creates the real accounts (+ optional --demo accounts)
+tests/                  pytest suite (78 tests)
 frontend/               React (Vite) + Tailwind SPA
   src/utils/__tests__/   Vitest unit tests
   Dockerfile              multi-stage: Vite build -> nginx serve
@@ -101,15 +106,30 @@ docker compose up --build
 - Frontend: http://localhost:5173
 - Backend: http://localhost:8000 (health check at `/health`)
 
-Seed the four test accounts inside the running backend container:
+Seed the real accounts (admin, teacher, student, security1) inside the
+running backend container:
 
 ```bash
 docker compose exec backend python -m scripts.seed
+docker compose cp backend:/code/CREDENTIALS.md ./CREDENTIALS.md
 ```
 
-Then log in at http://localhost:5173/login. **Seeded dev-only credentials:**
-`student1` / `teacher1` / `security1` / `hod1`, all with password
-`password123`.
+Then log in at http://localhost:5173/login using an email/username from
+the table below, with the password from the now-local `CREDENTIALS.md`
+(gitignored — generated fresh per machine, never committed).
+
+| Role | Email / username | Password |
+|---|---|---|
+| Admin (HOD) | rohan.pagadala15@gmail.com | see `CREDENTIALS.md` |
+| Teacher | patlollamandeepreddy3183@gmail.com | see `CREDENTIALS.md` |
+| Student | rithvikreddy27@gmail.com | see `CREDENTIALS.md` |
+| Security | `security1` | see `CREDENTIALS.md` |
+
+Login accepts either the email (case-insensitive) or the username. Want
+the old `student1`/`teacher1`/`hod1` demo accounts (local only,
+`password123`) too? `docker compose exec backend python -m scripts.seed
+--demo`. See [`instructions.md`](instructions.md) for the full accounts
+walkthrough, including changing/resetting a password.
 
 **Data persistence:** the SQLite file lives in a named Docker volume
 (`backend_data`), not the container's writable layer, so it survives
@@ -134,7 +154,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
-python -m scripts.seed   # seed test accounts
+python -m scripts.seed   # creates the real accounts, writes CREDENTIALS.md
 ```
 
 **Frontend** (separate terminal):
@@ -151,9 +171,11 @@ the frontend code never needs to know the backend's address either way.
 
 ## Running the tests
 
-**Backend** (59 tests — auth, role gating, the full dual-approval lifecycle,
-QR token round-trip/tamper/expiry, scan success/already-used/not-approved,
-HOD admin endpoints, self-deactivation guard):
+**Backend** (78 tests — auth incl. email login/case-insensitivity,
+change-password, role gating, the full dual-approval lifecycle, QR token
+round-trip/tamper/expiry, scan success/already-used/not-approved, HOD admin
+endpoints incl. duplicate-email rejection and self-deactivation guard, seed
+script behavior incl. the `--demo` production guard):
 
 ```bash
 pip install -r requirements-dev.txt
@@ -186,6 +208,11 @@ kubectl exec -n campuspass deploy/campuspass-backend -- python -m scripts.seed
 kubectl port-forward -n campuspass svc/campuspass-frontend 30080:80
 ```
 
+Seeding here creates the real accounts (never the `--demo` ones — the
+cluster's ConfigMap sets `ENVIRONMENT=production`, which the seed script's
+`--demo` flag refuses to run under anyway). Copy the printed passwords from
+that `kubectl exec` output.
+
 Then open http://localhost:30080. (`minikube service campuspass-frontend -n
 campuspass --url` also works, but blocks in the foreground on macOS with
 the docker driver — `port-forward` is simpler for a one-off check.)
@@ -209,7 +236,7 @@ ansible-playbook -i inventory/hosts.ini playbook.yml
 ```
 
 Installs Docker, installs `kubectl`/`minikube`, clones this repo, builds
-both images, starts minikube, applies the K8s manifests, seeds the demo
+both images, starts minikube, applies the K8s manifests, seeds the real
 accounts, and polls `/api/health` until the app actually responds. Every
 step is idempotent — re-running after a partial failure doesn't redo
 completed work. Edit `repo_url` in `ansible/playbook.yml` to point at your
