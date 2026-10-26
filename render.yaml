@@ -1,0 +1,47 @@
+databases:
+  - name: campuspass-db
+    databaseName: campuspass
+    plan: free
+
+services:
+  - type: web
+    name: campuspass-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: campuspass-db
+          property: connectionString
+      - key: CORS_ORIGINS
+        fromService:
+          type: web
+          name: campuspass-frontend
+          property: host
+        # Render's `fromService` hostname has no scheme prefix; this value
+        # needs a one-time manual edit after first deploy to
+        # "https://<that-hostname>" in the Render dashboard. It's not on the
+        # critical path either way - the frontend never calls the backend
+        # cross-origin (nginx proxies /api/* server-side), so CORS only
+        # matters for direct API access (e.g. Swagger UI, a future API
+        # client), not the app itself.
+
+  - type: web
+    name: campuspass-frontend
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    plan: free
+    envVars:
+      - key: BACKEND_HOST
+        fromService:
+          type: web
+          name: campuspass-backend
+          property: host
+      - key: BACKEND_SCHEME
+        value: https
