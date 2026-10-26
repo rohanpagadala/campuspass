@@ -5,6 +5,9 @@ metadata:
   namespace: campuspass
 data:
   DATABASE_URL: "sqlite:////code/data/campuspass.db"
+  # Guards scripts/seed.py's --demo flag - a cluster should only ever seed
+  # the real accounts, never the password123 demo ones.
+  ENVIRONMENT: "production"
   # Not actually needed for in-cluster traffic (the frontend's nginx proxies
   # /api/* to the backend Service same-namespace, so the browser only ever
   # talks to the frontend's own origin) - kept for direct/cross-origin access

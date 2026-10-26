@@ -18,6 +18,23 @@ services:
         fromDatabase:
           name: campuspass-db
           property: connectionString
+      # Guards scripts/seed.py's --demo flag - Render should only ever
+      # seed the real accounts, never the password123 demo ones.
+      - key: ENVIRONMENT
+        value: production
+      # Read by `python -m scripts.seed` (run once by hand via the Render
+      # shell after first deploy - see instructions.md) to set each real
+      # account's initial password. generateValue gives each a strong
+      # random value automatically; view them in the Render dashboard's
+      # environment tab, or override before first seeding.
+      - key: SEED_ADMIN_PASSWORD
+        generateValue: true
+      - key: SEED_TEACHER_PASSWORD
+        generateValue: true
+      - key: SEED_STUDENT_PASSWORD
+        generateValue: true
+      - key: SEED_SECURITY_PASSWORD
+        generateValue: true
       - key: CORS_ORIGINS
         fromService:
           type: web

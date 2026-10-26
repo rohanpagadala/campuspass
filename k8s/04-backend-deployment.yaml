@@ -42,6 +42,26 @@ spec:
                 secretKeyRef:
                   name: campuspass-secret
                   key: SECRET_KEY
+            - name: SEED_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: campuspass-secret
+                  key: SEED_ADMIN_PASSWORD
+            - name: SEED_TEACHER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: campuspass-secret
+                  key: SEED_TEACHER_PASSWORD
+            - name: SEED_STUDENT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: campuspass-secret
+                  key: SEED_STUDENT_PASSWORD
+            - name: SEED_SECURITY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: campuspass-secret
+                  key: SEED_SECURITY_PASSWORD
           volumeMounts:
             - name: backend-data
               mountPath: /code/data

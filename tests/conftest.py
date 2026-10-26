@@ -50,13 +50,14 @@ def client(db_session):
 DEFAULT_PASSWORD = "pass1234"
 
 
-def make_user(db_session, username, role, *, password=DEFAULT_PASSWORD, is_active=True):
+def make_user(db_session, username, role, *, password=DEFAULT_PASSWORD, is_active=True, email=None):
     user = User(
         username=username,
         hashed_password=hash_password(password),
         full_name=f"Test {username}",
         role=UserRole(role),
         is_active=is_active,
+        email=(email or f"{username}@example.com").lower(),
     )
     db_session.add(user)
     db_session.commit()

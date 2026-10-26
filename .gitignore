@@ -12,6 +12,7 @@ __pycache__/
 .env.*
 !.env.example
 backend-test-results.xml
+CREDENTIALS.md
 
 # Node / frontend
 frontend/node_modules/

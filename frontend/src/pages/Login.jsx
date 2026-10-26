@@ -49,7 +49,7 @@ export default function Login() {
         </p>
 
         <label htmlFor="username" className="text-sm font-medium text-slate-700 mb-1">
-          Username
+          Email or username
         </label>
         <input
           id="username"

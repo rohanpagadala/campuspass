@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from app.models import OutpassStatus, UserRole
 
@@ -10,11 +10,21 @@ class UserBase(BaseModel):
     username: str
     full_name: str
     role: UserRole
-    email: Optional[str] = None
+    email: EmailStr
+
+    @field_validator("email")
+    @classmethod
+    def lowercase_email(cls, value: str) -> str:
+        return value.lower()
 
 
 class UserCreate(UserBase):
     password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8)
 
 
 class UserOut(UserBase):

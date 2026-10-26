@@ -191,6 +191,7 @@ function OutpassesTab() {
 
 const EMPTY_USER_FORM = {
   username: "",
+  email: "",
   password: "",
   full_name: "",
   role: "student",
@@ -273,6 +274,15 @@ function UsersTab() {
           className="px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
         <input
+          name="email"
+          type="email"
+          placeholder="Email"
+          value={form.email}
+          onChange={handleFormChange}
+          required
+          className="px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+        <input
           name="password"
           type="password"
           placeholder="Password"
@@ -327,6 +337,7 @@ function UsersTab() {
                 {u.full_name}{" "}
                 <span className="text-xs font-normal text-slate-500">@{u.username}</span>
               </p>
+              <p className="text-xs text-slate-500">{u.email}</p>
               <p className="text-xs text-slate-500 capitalize">
                 {u.role} · {u.is_active ? "active" : "deactivated"}
               </p>

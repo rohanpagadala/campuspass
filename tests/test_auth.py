@@ -64,3 +64,78 @@ def test_register_endpoint_removed(client):
         json={"username": "x", "password": DEFAULT_PASSWORD, "full_name": "X", "role": "hod"},
     )
     assert resp.status_code == 404
+
+
+# --- email login -------------------------------------------------------
+
+
+def test_login_with_email(client, student):
+    resp = login(client, student.email)
+    assert resp.status_code == 200
+    assert resp.json()["role"] == "student"
+
+
+def test_login_with_email_different_case(client, student):
+    assert student.email == student.email.lower()
+    resp = login(client, student.email.upper())
+    assert resp.status_code == 200
+
+
+def test_login_with_mixed_case_email(client, student):
+    mixed = student.email[0].upper() + student.email[1:]
+    resp = login(client, mixed)
+    assert resp.status_code == 200
+
+
+def test_login_with_wrong_email_404_shaped_as_401(client):
+    resp = login(client, "nobody@example.com")
+    assert resp.status_code == 401
+
+
+def test_email_is_stored_lowercase(db_session):
+    from tests.conftest import make_user
+
+    user = make_user(db_session, "mixedcaseuser", "student", email="MixedCase@Example.COM")
+    assert user.email == "mixedcase@example.com"
+
+
+# --- change password -----------------------------------------------------
+
+
+def test_change_password_success(client, student_headers, student):
+    resp = client.post(
+        "/auth/change-password",
+        json={"current_password": DEFAULT_PASSWORD, "new_password": "brand-new-pass-1"},
+        headers=student_headers,
+    )
+    assert resp.status_code == 200
+
+    # old password no longer works, new one does
+    assert login(client, student.username, password=DEFAULT_PASSWORD).status_code == 401
+    assert login(client, student.username, password="brand-new-pass-1").status_code == 200
+
+
+def test_change_password_wrong_current_password(client, student_headers):
+    resp = client.post(
+        "/auth/change-password",
+        json={"current_password": "totally-wrong", "new_password": "brand-new-pass-1"},
+        headers=student_headers,
+    )
+    assert resp.status_code == 401
+
+
+def test_change_password_too_short_422(client, student_headers):
+    resp = client.post(
+        "/auth/change-password",
+        json={"current_password": DEFAULT_PASSWORD, "new_password": "short1"},
+        headers=student_headers,
+    )
+    assert resp.status_code == 422
+
+
+def test_change_password_requires_auth(client):
+    resp = client.post(
+        "/auth/change-password",
+        json={"current_password": "x", "new_password": "new-password-1"},
+    )
+    assert resp.status_code == 401

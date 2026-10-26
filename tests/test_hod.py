@@ -104,6 +104,7 @@ def test_hod_creates_user(client, hod_headers):
         "/hod/users",
         json={
             "username": "newstudent",
+            "email": "newstudent@example.com",
             "password": DEFAULT_PASSWORD,
             "full_name": "New Student",
             "role": "student",
@@ -112,6 +113,37 @@ def test_hod_creates_user(client, hod_headers):
     )
     assert resp.status_code == 201
     assert "hashed_password" not in resp.json()
+    assert resp.json()["email"] == "newstudent@example.com"
+
+
+def test_hod_create_user_lowercases_email(client, hod_headers):
+    resp = client.post(
+        "/hod/users",
+        json={
+            "username": "casetest",
+            "email": "CaseTest@Example.COM",
+            "password": DEFAULT_PASSWORD,
+            "full_name": "Case Test",
+            "role": "student",
+        },
+        headers=hod_headers,
+    )
+    assert resp.status_code == 201
+    assert resp.json()["email"] == "casetest@example.com"
+
+
+def test_hod_create_user_missing_email_422(client, hod_headers):
+    resp = client.post(
+        "/hod/users",
+        json={
+            "username": "noemail",
+            "password": DEFAULT_PASSWORD,
+            "full_name": "No Email",
+            "role": "student",
+        },
+        headers=hod_headers,
+    )
+    assert resp.status_code == 422
 
 
 def test_hod_create_user_duplicate_username_400(client, hod_headers, student):
@@ -119,8 +151,39 @@ def test_hod_create_user_duplicate_username_400(client, hod_headers, student):
         "/hod/users",
         json={
             "username": student.username,
+            "email": "someone-else@example.com",
             "password": DEFAULT_PASSWORD,
             "full_name": "Dup",
+            "role": "student",
+        },
+        headers=hod_headers,
+    )
+    assert resp.status_code == 400
+
+
+def test_hod_create_user_duplicate_email_400(client, hod_headers, student):
+    resp = client.post(
+        "/hod/users",
+        json={
+            "username": "someoneelse",
+            "email": student.email,
+            "password": DEFAULT_PASSWORD,
+            "full_name": "Dup Email",
+            "role": "student",
+        },
+        headers=hod_headers,
+    )
+    assert resp.status_code == 400
+
+
+def test_hod_create_user_duplicate_email_different_case_400(client, hod_headers, student):
+    resp = client.post(
+        "/hod/users",
+        json={
+            "username": "someoneelse2",
+            "email": student.email.upper(),
+            "password": DEFAULT_PASSWORD,
+            "full_name": "Dup Email Case",
             "role": "student",
         },
         headers=hod_headers,

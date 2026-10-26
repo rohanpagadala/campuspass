@@ -9,6 +9,13 @@ services:
       SECRET_KEY: ${SECRET_KEY:-docker-compose-demo-secret-change-me}
       DATABASE_URL: sqlite:////code/data/campuspass.db
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      # Passed through so `docker compose exec backend python -m scripts.seed`
+      # picks up any override from .env; unset is fine, the script then
+      # generates a strong random password instead.
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      SEED_TEACHER_PASSWORD: ${SEED_TEACHER_PASSWORD:-}
+      SEED_STUDENT_PASSWORD: ${SEED_STUDENT_PASSWORD:-}
+      SEED_SECURITY_PASSWORD: ${SEED_SECURITY_PASSWORD:-}
     volumes:
       - backend_data:/code/data
     healthcheck:

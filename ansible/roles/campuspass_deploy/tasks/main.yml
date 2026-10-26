@@ -76,11 +76,16 @@
   ansible.builtin.command: kubectl rollout status deployment/campuspass-frontend -n campuspass --timeout=180s
   changed_when: false
 
-- name: Seed the demo accounts
+- name: Seed the real accounts (admin/teacher/student/security1 - no --demo in a cluster)
   become: false
   ansible.builtin.shell: >
     kubectl exec -n campuspass deploy/campuspass-backend -- python -m scripts.seed
   changed_when: true
+  register: campuspass_deploy_seed_output
+
+- name: Show the seed output (generated passwords, if any were new)
+  ansible.builtin.debug:
+    msg: "{{ campuspass_deploy_seed_output.stdout_lines }}"
 
 - name: Get the frontend service URL
   become: false
