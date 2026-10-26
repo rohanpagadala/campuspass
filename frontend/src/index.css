@@ -1,5 +1,61 @@
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
 @import "tailwindcss";
 
+@theme {
+  --color-brand-950: #121044;
+  --color-brand-900: #1e1b6e;
+  --color-brand-800: #2b287e;
+  --color-brand-100: #e4e4f7;
+  --color-brand-50: #f3f3fc;
+  --color-page: #f6f6fb;
+  --color-danger: #e5322d;
+  --color-success: #16a34a;
+  --color-info: #1f7a8c;
+  --color-warning: #d97706;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  color: #172033;
+  background: #f6f6fb;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
-  @apply bg-slate-50 text-slate-900;
+  @apply min-w-0 bg-page text-slate-900 antialiased;
+  margin: 0;
+  font-size: 16px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  @apply outline-none ring-2 ring-brand-800 ring-offset-2;
+}
+
+.app-shell {
+  min-height: 100vh;
 }
