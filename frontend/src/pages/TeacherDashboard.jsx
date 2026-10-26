@@ -1,119 +1,15 @@
 import { useEffect, useState } from "react";
+import { CheckCircle2, Clock3, ShieldCheck, XCircle } from "lucide-react";
 import apiClient from "../api/client";
 import DashboardLayout from "../components/DashboardLayout";
 import formatDateTime from "../utils/formatDateTime";
 import extractApiErrorMessage from "../utils/extractApiErrorMessage";
+import { Avatar, Button, Card, EmptyState, LoadingSkeleton, StatCard } from "../components/ui";
 
 export default function TeacherDashboard() {
-  const [outpasses, setOutpasses] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
-  const [actioningId, setActioningId] = useState(null);
-  const [actionError, setActionError] = useState("");
-  const [confirmation, setConfirmation] = useState("");
-
-  async function fetchPending() {
-    setLoading(true);
-    setLoadError("");
-    try {
-      const { data } = await apiClient.get("/outpass/pending");
-      setOutpasses(data);
-    } catch {
-      setLoadError("Could not load pending requests.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    fetchPending();
-  }, []);
-
-  async function handleDecision(outpassId, decision) {
-    setActionError("");
-    setConfirmation("");
-    setActioningId(outpassId);
-    try {
-      await apiClient.post(`/outpass/${outpassId}/${decision}`);
-      setOutpasses((prev) => prev.filter((o) => o.id !== outpassId));
-      setConfirmation(
-        decision === "approve"
-          ? "Request approved and sent to HOD for final approval."
-          : "Request rejected."
-      );
-    } catch (err) {
-      setActionError(
-        extractApiErrorMessage(err, "Could not update this request. Please try again.")
-      );
-    } finally {
-      setActioningId(null);
-    }
-  }
-
-  return (
-    <DashboardLayout>
-      <h1 className="text-xl font-semibold text-slate-900 mb-4">Teacher Dashboard</h1>
-
-      {confirmation && (
-        <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-4">
-          {confirmation}
-        </p>
-      )}
-      {actionError && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
-          {actionError}
-        </p>
-      )}
-
-      <h2 className="text-base font-semibold text-slate-900 mb-3">Pending Requests</h2>
-
-      {loading && <p className="text-sm text-slate-500">Loading...</p>}
-      {loadError && <p className="text-sm text-red-600">{loadError}</p>}
-
-      {!loading && !loadError && outpasses.length === 0 && (
-        <p className="text-sm text-slate-500">No pending requests.</p>
-      )}
-
-      <ul className="flex flex-col gap-3">
-        {outpasses.map((outpass) => {
-          const isBusy = actioningId === outpass.id;
-          return (
-            <li
-              key={outpass.id}
-              className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4"
-            >
-              <div className="mb-2">
-                <p className="text-sm font-semibold text-slate-900">
-                  {outpass.student_full_name}
-                </p>
-                <p className="text-xs text-slate-500">@{outpass.student_username}</p>
-              </div>
-
-              <p className="text-sm text-slate-900 mb-2">{outpass.reason}</p>
-              <p className="text-xs text-slate-500 mb-4">
-                Exit: {formatDateTime(outpass.requested_exit_time)}
-              </p>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleDecision(outpass.id, "approve")}
-                  disabled={isBusy}
-                  className="flex-1 px-3 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed transition-colors"
-                >
-                  Approve
-                </button>
-                <button
-                  onClick={() => handleDecision(outpass.id, "reject")}
-                  disabled={isBusy}
-                  className="flex-1 px-3 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed transition-colors"
-                >
-                  Reject
-                </button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </DashboardLayout>
-  );
+  const [outpasses, setOutpasses] = useState([]); const [loading, setLoading] = useState(true); const [loadError, setLoadError] = useState(""); const [actioningId, setActioningId] = useState(null); const [actionError, setActionError] = useState(""); const [confirmation, setConfirmation] = useState("");
+  async function fetchPending() { setLoading(true); setLoadError(""); try { const { data } = await apiClient.get("/outpass/pending"); setOutpasses(data); } catch { setLoadError("Could not load pending requests."); } finally { setLoading(false); } }
+  useEffect(() => { fetchPending(); }, []);
+  async function handleDecision(id, decision) { setActionError(""); setConfirmation(""); setActioningId(id); try { await apiClient.post(`/outpass/${id}/${decision}`); setOutpasses((prev) => prev.filter((item) => item.id !== id)); setConfirmation(decision === "approve" ? "Request approved and sent to HOD for final approval." : "Request rejected."); } catch (err) { setActionError(extractApiErrorMessage(err, "Could not update this request. Please try again.")); } finally { setActioningId(null); } }
+  return <DashboardLayout><div className="mb-8"><p className="mb-2 text-sm font-semibold text-brand-800">Teacher workspace</p><h1 className="text-3xl font-bold tracking-tight text-slate-950">Pending approvals</h1><p className="mt-2 text-base text-slate-500">Review student requests and keep the approval flow moving.</p></div><div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_260px]"><div id="pending" className="scroll-mt-24 min-w-0">{confirmation && <p role="status" className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-3 text-sm text-green-700">{confirmation}</p>}{actionError && <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700">{actionError}</p>}{loading ? <LoadingSkeleton /> : loadError ? <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{loadError}</p> : outpasses.length === 0 ? <EmptyState title="All caught up" description="There are no student requests waiting for your review." icon={CheckCircle2} /> : <div className="space-y-4">{outpasses.map((outpass) => <Card key={outpass.id} className="p-5 sm:p-6"><div className="flex items-start gap-3"><Avatar name={outpass.student_full_name} /><div className="min-w-0 flex-1"><div className="flex flex-col justify-between gap-2 sm:flex-row"><div><h2 className="text-lg font-bold text-slate-950">{outpass.student_full_name}</h2><p className="text-sm text-slate-500">@{outpass.student_username}</p></div><span className="text-sm text-slate-500">Request #{outpass.id}</span></div><p className="mt-5 text-base font-semibold text-slate-900">{outpass.reason}</p><p className="mt-2 flex items-center gap-1.5 text-sm text-slate-500"><Clock3 size={15} /> Requested exit: {formatDateTime(outpass.requested_exit_time)}</p></div></div><div className="mt-5 flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row"><Button variant="success" onClick={() => handleDecision(outpass.id, "approve")} loading={actioningId === outpass.id} className="flex-1"><CheckCircle2 size={17} />Approve request</Button><Button variant="danger" onClick={() => handleDecision(outpass.id, "reject")} disabled={actioningId === outpass.id} className="flex-1"><XCircle size={17} />Reject request</Button></div></Card>)}</div>}</div><aside><StatCard label="Today's pending" value={outpasses.length} icon={ShieldCheck} tone="indigo" detail="Requests awaiting your review" /></aside></div></DashboardLayout>;
 }

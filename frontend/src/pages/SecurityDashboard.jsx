@@ -1,82 +1,13 @@
 import { useState } from "react";
+import { CheckCircle2, ScanLine, ShieldAlert, UserRound } from "lucide-react";
 import apiClient from "../api/client";
 import DashboardLayout from "../components/DashboardLayout";
 import formatDateTime from "../utils/formatDateTime";
 import extractApiErrorMessage from "../utils/extractApiErrorMessage";
+import { Avatar, Button, Card } from "../components/ui";
 
 export default function SecurityDashboard() {
-  const [code, setCode] = useState("");
-  const [scanning, setScanning] = useState(false);
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState("");
-
-  async function handleScan(e) {
-    e.preventDefault();
-    if (!code.trim()) return;
-
-    setScanning(true);
-    setResult(null);
-    setError("");
-
-    try {
-      const { data } = await apiClient.post("/security/scan", { code: code.trim() });
-      setResult(data);
-    } catch (err) {
-      setError(extractApiErrorMessage(err, "Could not verify this code."));
-    } finally {
-      setScanning(false);
-      setCode("");
-    }
-  }
-
-  return (
-    <DashboardLayout>
-      <h1 className="text-xl font-semibold text-slate-900 mb-4">Security Dashboard</h1>
-
-      <form
-        onSubmit={handleScan}
-        className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 flex flex-col mb-6"
-      >
-        <label htmlFor="code" className="text-sm font-medium text-slate-700 mb-1">
-          QR token or exit code
-        </label>
-        <textarea
-          id="code"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          placeholder="Paste the scanned QR token, or type the 6-character exit code"
-          required
-          rows={3}
-          className="mb-4 px-3 py-2.5 rounded-lg border border-slate-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-        />
-
-        <button
-          type="submit"
-          disabled={scanning}
-          className="px-4 py-2.5 rounded-lg bg-blue-600 text-white font-semibold text-base hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed transition-colors"
-        >
-          {scanning ? "Checking..." : "Verify & Exit"}
-        </button>
-      </form>
-
-      {result && (
-        <div className="bg-green-50 border border-green-200 rounded-2xl p-4">
-          <p className="text-sm font-semibold text-green-800 mb-2">Exit approved</p>
-          <p className="text-sm text-slate-900">{result.student_full_name}</p>
-          <p className="text-xs text-slate-500 mb-2">@{result.student_username}</p>
-          <p className="text-sm text-slate-900 mb-2">{result.reason}</p>
-          <p className="text-xs text-slate-500">
-            Exit: {formatDateTime(result.requested_exit_time)}
-          </p>
-        </div>
-      )}
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
-          <p className="text-sm font-semibold text-red-800 mb-1">Scan failed</p>
-          <p className="text-sm text-red-700">{error}</p>
-        </div>
-      )}
-    </DashboardLayout>
-  );
+  const [code, setCode] = useState(""); const [scanning, setScanning] = useState(false); const [result, setResult] = useState(null); const [error, setError] = useState("");
+  async function handleScan(event) { event.preventDefault(); if (!code.trim()) return; setScanning(true); setResult(null); setError(""); try { const { data } = await apiClient.post("/security/scan", { code: code.trim() }); setResult(data); } catch (err) { setError(extractApiErrorMessage(err, "Could not verify this code.")); } finally { setScanning(false); setCode(""); } }
+  return <DashboardLayout><div className="mb-8"><p className="mb-2 text-sm font-semibold text-brand-800">Security workspace</p><h1 className="text-3xl font-bold tracking-tight text-slate-950">Gate scanner</h1><p className="mt-2 text-base text-slate-500">Verify a QR token or short code before allowing an exit.</p></div><div id="scanner" className="mx-auto max-w-3xl scroll-mt-24"><Card className="p-5 sm:p-8"><div className="mb-7 flex items-center gap-4"><div className="rounded-xl bg-brand-50 p-3 text-brand-800"><ScanLine size={28} /></div><div><h2 className="text-xl font-bold text-slate-950">Verify an exit pass</h2><p className="mt-1 text-sm text-slate-500">Paste the complete token or enter the six-character code.</p></div></div><form onSubmit={handleScan} className="space-y-5"><label htmlFor="code" className="block"><span className="mb-1.5 block text-sm font-semibold text-slate-700">QR token or short code</span><textarea id="code" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Enter token or code" required rows={4} className="w-full rounded-xl border border-slate-300 px-4 py-4 font-mono text-lg text-slate-900 placeholder:font-sans placeholder:text-slate-400 focus:border-brand-800 focus:outline-none focus:ring-4 focus:ring-brand-100" /></label><Button type="submit" loading={scanning} className="w-full text-base sm:w-auto"><ScanLine size={19} />Verify & exit</Button></form></Card>{result && <Card className="mt-6 border-green-200 bg-green-50 p-6"><div className="flex items-start gap-4"><div className="rounded-full bg-green-100 p-3 text-success"><CheckCircle2 size={28} /></div><div><p className="text-xl font-bold text-green-800">Exit approved</p><p className="mt-1 text-sm text-green-700">This pass is valid and has been marked as used.</p></div></div><div className="mt-6 grid gap-4 border-t border-green-200 pt-5 sm:grid-cols-2"><div className="flex items-center gap-3"><Avatar name={result.student_full_name} size="sm" /><div><p className="font-semibold text-slate-900">{result.student_full_name}</p><p className="text-sm text-slate-600">@{result.student_username}</p></div></div><div className="flex items-start gap-2 text-sm text-slate-700"><UserRound size={17} className="mt-0.5 shrink-0" /><span><strong>Reason:</strong> {result.reason}<br /><strong>Exit:</strong> {formatDateTime(result.requested_exit_time)}</span></div></div></Card>}{error && <Card className="mt-6 border-red-200 bg-red-50 p-6"><div className="flex items-start gap-4"><div className="rounded-full bg-red-100 p-3 text-danger"><ShieldAlert size={28} /></div><div><p className="text-xl font-bold text-red-800">Scan failed</p><p className="mt-1 text-base text-red-700">{error}</p></div></div></Card>}</div></DashboardLayout>;
 }

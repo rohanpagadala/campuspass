@@ -1,404 +1,44 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Activity, CheckCircle2, ClipboardList, UserPlus, XCircle } from "lucide-react";
 import apiClient from "../api/client";
 import DashboardLayout from "../components/DashboardLayout";
 import StatusBadge from "../components/StatusBadge";
 import formatDateTime from "../utils/formatDateTime";
 import extractApiErrorMessage from "../utils/extractApiErrorMessage";
 import { useAuth } from "../context/AuthContext";
+import { Avatar, Badge, Button, Card, EmptyState, Field, LoadingSkeleton, PillTabs, SelectField, StatCard } from "../components/ui";
 
-const TABS = [
-  { id: "outpasses", label: "All Outpasses" },
-  { id: "users", label: "Users" },
-  { id: "exitLogs", label: "Exit Logs" },
-];
+const TABS = [{ id: "outpasses", label: "Outpasses" }, { id: "users", label: "Users" }, { id: "exitLogs", label: "Exit logs" }];
+const STATUS_FILTERS = [{ id: "", label: "All" }, { id: "pending", label: "Pending" }, { id: "teacher_approved", label: "Awaiting HOD" }, { id: "approved", label: "Approved" }, { id: "rejected", label: "Rejected" }, { id: "expired", label: "Expired" }];
 
 export default function HodDashboard() {
   const [activeTab, setActiveTab] = useState("outpasses");
-
-  return (
-    <DashboardLayout>
-      <h1 className="text-xl font-semibold text-slate-900 mb-4">HOD Dashboard</h1>
-
-      <div className="flex gap-1 mb-6 border-b border-slate-200">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              activeTab === tab.id
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {activeTab === "outpasses" && <OutpassesTab />}
-      {activeTab === "users" && <UsersTab />}
-      {activeTab === "exitLogs" && <ExitLogsTab />}
-    </DashboardLayout>
-  );
+  const [stats, setStats] = useState({ outpasses: [], logs: [] });
+  useEffect(() => { Promise.all([apiClient.get("/hod/outpasses"), apiClient.get("/hod/exit-logs")]).then(([outpasses, logs]) => setStats({ outpasses: outpasses.data, logs: logs.data })).catch(() => {}); }, []);
+  const summary = useMemo(() => ({ total: stats.outpasses.length, awaiting: stats.outpasses.filter((item) => item.status === "teacher_approved").length, approved: stats.outpasses.filter((item) => item.status === "approved").length, exits: stats.logs.filter((item) => new Date(item.scanned_at).toDateString() === new Date().toDateString()).length }), [stats]);
+  return <DashboardLayout><div className="mb-8"><p className="mb-2 text-sm font-semibold text-brand-800">Admin workspace</p><h1 className="text-3xl font-bold tracking-tight text-slate-950">Campus overview</h1><p className="mt-2 text-base text-slate-500">Monitor approvals, users, and verified campus exits.</p></div><div className="mb-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><StatCard label="Total outpasses" value={summary.total} icon={ClipboardList} /><StatCard label="Awaiting final approval" value={summary.awaiting} icon={Activity} tone="amber" /><StatCard label="Approved passes" value={summary.approved} icon={CheckCircle2} tone="green" /><StatCard label="Exits today" value={summary.exits} icon={XCircle} tone="teal" /></div><div className="mb-6 overflow-x-auto pb-1"><PillTabs tabs={TABS} active={activeTab} onChange={setActiveTab} /></div>{activeTab === "outpasses" && <div id="outpasses" className="scroll-mt-24"><OutpassesTab /></div>}{activeTab === "users" && <div id="users" className="scroll-mt-24"><UsersTab /></div>}{activeTab === "exitLogs" && <div id="exit-logs" className="scroll-mt-24"><ExitLogsTab /></div>}</DashboardLayout>;
 }
 
 function OutpassesTab() {
-  const [outpasses, setOutpasses] = useState([]);
-  const [statusFilter, setStatusFilter] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [actioningId, setActioningId] = useState(null);
-  const [actionError, setActionError] = useState("");
-  const [confirmation, setConfirmation] = useState("");
-
-  async function fetchOutpasses() {
-    setLoading(true);
-    setError("");
-    try {
-      const { data } = await apiClient.get("/hod/outpasses", {
-        params: statusFilter ? { status: statusFilter } : {},
-      });
-      setOutpasses(data);
-    } catch {
-      setError("Could not load outpasses.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    fetchOutpasses();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter]);
-
-  async function handleDecision(outpassId, decision) {
-    setActionError("");
-    setConfirmation("");
-    setActioningId(outpassId);
-    try {
-      await apiClient.post(`/hod/outpasses/${outpassId}/${decision}`);
-      setConfirmation(
-        decision === "approve"
-          ? "Final approval given — QR code and exit code generated."
-          : "Request rejected."
-      );
-      await fetchOutpasses();
-    } catch (err) {
-      setActionError(
-        extractApiErrorMessage(err, "Could not update this request. Please try again.")
-      );
-    } finally {
-      setActioningId(null);
-    }
-  }
-
-  return (
-    <div>
-      <div className="flex items-center gap-2 mb-4">
-        <label htmlFor="status-filter" className="text-sm font-medium text-slate-700">
-          Filter by status
-        </label>
-        <select
-          id="status-filter"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-2 py-1.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        >
-          <option value="">All</option>
-          <option value="pending">Pending</option>
-          <option value="teacher_approved">Awaiting HOD</option>
-          <option value="approved">Approved</option>
-          <option value="rejected">Rejected</option>
-          <option value="expired">Expired</option>
-        </select>
-      </div>
-
-      {confirmation && (
-        <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-4">
-          {confirmation}
-        </p>
-      )}
-      {actionError && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
-          {actionError}
-        </p>
-      )}
-
-      {loading && <p className="text-sm text-slate-500">Loading...</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {!loading && !error && outpasses.length === 0 && (
-        <p className="text-sm text-slate-500">No outpasses found.</p>
-      )}
-
-      <div className="flex flex-col gap-3">
-        {outpasses.map((o) => {
-          const isBusy = actioningId === o.id;
-          return (
-            <div
-              key={o.id}
-              className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4"
-            >
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">
-                    {o.student_full_name}{" "}
-                    <span className="text-xs font-normal text-slate-500">
-                      @{o.student_username}
-                    </span>
-                  </p>
-                  <p className="text-sm text-slate-900">{o.reason}</p>
-                </div>
-                <StatusBadge status={o.status} />
-              </div>
-              <p className="text-xs text-slate-500 mb-1">
-                Exit: {formatDateTime(o.requested_exit_time)}
-              </p>
-              <p className="text-xs text-slate-500">
-                Teacher:{" "}
-                {o.teacher_full_name ? `${o.teacher_full_name} (@${o.teacher_username})` : "—"}
-                {o.decided_at ? ` on ${formatDateTime(o.decided_at)}` : ""}
-              </p>
-              <p className="text-xs text-slate-500 mb-2">
-                HOD: {o.hod_full_name ? `${o.hod_full_name} (@${o.hod_username})` : "—"}
-                {o.hod_decided_at ? ` on ${formatDateTime(o.hod_decided_at)}` : ""}
-              </p>
-
-              {o.status === "teacher_approved" && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleDecision(o.id, "approve")}
-                    disabled={isBusy}
-                    className="flex-1 px-3 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Final Approve
-                  </button>
-                  <button
-                    onClick={() => handleDecision(o.id, "reject")}
-                    disabled={isBusy}
-                    className="flex-1 px-3 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Reject
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+  const [items, setItems] = useState([]); const [filter, setFilter] = useState(""); const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const [actionId, setActionId] = useState(null); const [notice, setNotice] = useState(""); const [actionError, setActionError] = useState("");
+  async function fetchItems() { setLoading(true); setError(""); try { const { data } = await apiClient.get("/hod/outpasses", { params: filter ? { status: filter } : {} }); setItems(data); } catch { setError("Could not load outpasses."); } finally { setLoading(false); } }
+  useEffect(() => { fetchItems(); }, [filter]);
+  async function decide(id, decision) { setActionId(id); setNotice(""); setActionError(""); try { await apiClient.post(`/hod/outpasses/${id}/${decision}`); setNotice(decision === "approve" ? "Final approval given — QR code and exit code generated." : "Request rejected."); await fetchItems(); } catch (err) { setActionError(extractApiErrorMessage(err, "Could not update this request.")); } finally { setActionId(null); } }
+  return <div><div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><h2 className="text-xl font-bold text-slate-950">Outpass requests</h2><p className="mt-1 text-sm text-slate-500">Review the complete approval queue.</p></div><PillTabs tabs={STATUS_FILTERS} active={filter} onChange={setFilter} /></div>{notice && <p role="status" className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">{notice}</p>}{actionError && <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{actionError}</p>}{loading ? <LoadingSkeleton /> : error ? <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p> : items.length === 0 ? <EmptyState title="No outpasses found" description="Try another status filter or check back later." icon={ClipboardList} /> : <div className="space-y-3">{items.map((item) => <Card key={item.id} className="p-5"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start"><div className="flex min-w-0 gap-3"><Avatar name={item.student_full_name} size="sm" /><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="text-lg font-bold text-slate-950">{item.student_full_name}</h3><span className="text-sm text-slate-500">@{item.student_username}</span></div><p className="mt-2 font-semibold text-slate-900">{item.reason}</p><p className="mt-1 text-sm text-slate-500">Exit: {formatDateTime(item.requested_exit_time)}</p></div></div><StatusBadge status={item.status} /></div><div className="mt-4 grid gap-1 border-t border-slate-100 pt-4 text-sm text-slate-500 sm:grid-cols-2"><p>Teacher: {item.teacher_full_name || "Not decided"}</p><p>HOD: {item.hod_full_name || "Not decided"}</p></div>{item.status === "teacher_approved" && <div className="mt-4 flex flex-col gap-3 sm:flex-row"><Button variant="success" onClick={() => decide(item.id, "approve")} loading={actionId === item.id} className="flex-1"><CheckCircle2 size={17} />Final approve</Button><Button variant="danger" disabled={actionId === item.id} onClick={() => decide(item.id, "reject")} className="flex-1"><XCircle size={17} />Reject</Button></div>}</Card>)}</div>}</div>;
 }
 
-const EMPTY_USER_FORM = {
-  username: "",
-  email: "",
-  password: "",
-  full_name: "",
-  role: "student",
-};
-
+const EMPTY_USER = { username: "", email: "", password: "", full_name: "", role: "student" };
 function UsersTab() {
-  const { user: currentUser } = useAuth();
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
-  const [form, setForm] = useState(EMPTY_USER_FORM);
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState("");
-  const [deactivatingId, setDeactivatingId] = useState(null);
-  const [actionError, setActionError] = useState("");
-
-  async function fetchUsers() {
-    setLoading(true);
-    setLoadError("");
-    try {
-      const { data } = await apiClient.get("/hod/users");
-      setUsers(data);
-    } catch {
-      setLoadError("Could not load users.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  function handleFormChange(e) {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  }
-
-  async function handleCreateUser(e) {
-    e.preventDefault();
-    setCreateError("");
-    setCreating(true);
-    try {
-      await apiClient.post("/hod/users", form);
-      setForm(EMPTY_USER_FORM);
-      await fetchUsers();
-    } catch (err) {
-      setCreateError(extractApiErrorMessage(err, "Could not create user."));
-    } finally {
-      setCreating(false);
-    }
-  }
-
-  async function handleDeactivate(userId) {
-    setActionError("");
-    setDeactivatingId(userId);
-    try {
-      await apiClient.patch(`/hod/users/${userId}/deactivate`);
-      await fetchUsers();
-    } catch (err) {
-      setActionError(extractApiErrorMessage(err, "Could not deactivate user."));
-    } finally {
-      setDeactivatingId(null);
-    }
-  }
-
-  return (
-    <div>
-      <form
-        onSubmit={handleCreateUser}
-        className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 flex flex-col gap-3 mb-6"
-      >
-        <h2 className="text-base font-semibold text-slate-900">Create User</h2>
-
-        <input
-          name="username"
-          placeholder="Username"
-          value={form.username}
-          onChange={handleFormChange}
-          required
-          className="px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        />
-        <input
-          name="email"
-          type="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={handleFormChange}
-          required
-          className="px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        />
-        <input
-          name="password"
-          type="password"
-          placeholder="Password"
-          value={form.password}
-          onChange={handleFormChange}
-          required
-          className="px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        />
-        <input
-          name="full_name"
-          placeholder="Full name"
-          value={form.full_name}
-          onChange={handleFormChange}
-          required
-          className="px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        />
-        <select
-          name="role"
-          value={form.role}
-          onChange={handleFormChange}
-          className="px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        >
-          <option value="student">Student</option>
-          <option value="teacher">Teacher</option>
-          <option value="security">Security</option>
-          <option value="hod">HOD</option>
-        </select>
-
-        {createError && <p className="text-sm text-red-600">{createError}</p>}
-
-        <button
-          type="submit"
-          disabled={creating}
-          className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed transition-colors"
-        >
-          {creating ? "Creating..." : "Create user"}
-        </button>
-      </form>
-
-      {loading && <p className="text-sm text-slate-500">Loading...</p>}
-      {loadError && <p className="text-sm text-red-600">{loadError}</p>}
-      {actionError && <p className="text-sm text-red-600 mb-3">{actionError}</p>}
-
-      <div className="flex flex-col gap-2">
-        {users.map((u) => (
-          <div
-            key={u.id}
-            className="bg-white rounded-2xl shadow-sm border border-slate-200 p-3 flex items-center justify-between gap-3"
-          >
-            <div>
-              <p className="text-sm font-medium text-slate-900">
-                {u.full_name}{" "}
-                <span className="text-xs font-normal text-slate-500">@{u.username}</span>
-              </p>
-              <p className="text-xs text-slate-500">{u.email}</p>
-              <p className="text-xs text-slate-500 capitalize">
-                {u.role} · {u.is_active ? "active" : "deactivated"}
-              </p>
-            </div>
-            {u.id !== currentUser?.id && u.is_active && (
-              <button
-                onClick={() => handleDeactivate(u.id)}
-                disabled={deactivatingId === u.id}
-                className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed transition-colors shrink-0"
-              >
-                {deactivatingId === u.id ? "..." : "Deactivate"}
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  const { user: currentUser } = useAuth(); const [users, setUsers] = useState([]); const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const [form, setForm] = useState(EMPTY_USER); const [creating, setCreating] = useState(false); const [createError, setCreateError] = useState(""); const [actionId, setActionId] = useState(null); const [actionError, setActionError] = useState("");
+  async function fetchUsers() { setLoading(true); setError(""); try { const { data } = await apiClient.get("/hod/users"); setUsers(data); } catch { setError("Could not load users."); } finally { setLoading(false); } }
+  useEffect(() => { fetchUsers(); }, []);
+  async function createUser(event) { event.preventDefault(); setCreating(true); setCreateError(""); try { await apiClient.post("/hod/users", form); setForm(EMPTY_USER); await fetchUsers(); } catch (err) { setCreateError(extractApiErrorMessage(err, "Could not create user.")); } finally { setCreating(false); } }
+  async function deactivate(id) { if (!window.confirm("Deactivate this user? They will no longer be able to sign in.")) return; setActionId(id); setActionError(""); try { await apiClient.patch(`/hod/users/${id}/deactivate`); await fetchUsers(); } catch (err) { setActionError(extractApiErrorMessage(err, "Could not deactivate user.")); } finally { setActionId(null); } }
+  return <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]"><Card className="h-fit p-5"><div className="mb-5 flex items-center gap-3"><div className="rounded-lg bg-brand-50 p-2.5 text-brand-800"><UserPlus size={20} /></div><div><h2 className="text-xl font-bold text-slate-950">Create user</h2><p className="text-sm text-slate-500">Add a member to CampusPass.</p></div></div><form onSubmit={createUser} className="space-y-4"><Field label="Full name" id="full_name" name="full_name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required /><Field label="Username" id="username" name="username" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required /><Field label="Email" id="email" name="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required /><Field label="Temporary password" id="user-password" name="password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required /><SelectField label="Role" id="role" name="role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}><option value="student">Student</option><option value="teacher">Teacher</option><option value="security">Security</option><option value="hod">Administrator</option></SelectField>{createError && <p role="alert" className="text-sm text-red-600">{createError}</p>}<Button type="submit" loading={creating} className="w-full"><UserPlus size={17} />Create user</Button></form></Card><div><div className="mb-4 flex items-end justify-between"><div><h2 className="text-xl font-bold text-slate-950">All users</h2><p className="mt-1 text-sm text-slate-500">{users.length} accounts</p></div></div>{actionError && <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{actionError}</p>}{loading ? <LoadingSkeleton rows={4} /> : error ? <p role="alert" className="rounded-lg bg-red-50 p-4 text-sm text-red-700">{error}</p> : <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm"><table className="min-w-[680px] w-full text-left text-sm"><thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-4 py-3">User</th><th className="px-4 py-3">Role</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Action</th></tr></thead><tbody className="divide-y divide-slate-100">{users.map((item, index) => <tr key={item.id} className={index % 2 ? "bg-slate-50/60" : "bg-white"}><td className="px-4 py-4"><div className="flex items-center gap-3"><Avatar name={item.full_name} size="sm" /><div><p className="font-semibold text-slate-900">{item.full_name}</p><p className="text-sm text-slate-500">@{item.username} · {item.email}</p></div></div></td><td className="px-4 py-4"><Badge tone="indigo">{item.role === "hod" ? "Administrator" : item.role}</Badge></td><td className="px-4 py-4">{item.is_active ? <Badge tone="success">Active</Badge> : <Badge>Deactivated</Badge>}</td><td className="px-4 py-4 text-right">{item.id !== currentUser?.id && item.is_active && <Button variant="danger" onClick={() => deactivate(item.id)} loading={actionId === item.id}>Deactivate</Button>}</td></tr>)}</tbody></table></div>}</div></div>;
 }
 
 function ExitLogsTab() {
-  const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    apiClient
-      .get("/hod/exit-logs")
-      .then(({ data }) => setLogs(data))
-      .catch(() => setError("Could not load exit logs."))
-      .finally(() => setLoading(false));
-  }, []);
-
-  return (
-    <div>
-      {loading && <p className="text-sm text-slate-500">Loading...</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {!loading && !error && logs.length === 0 && (
-        <p className="text-sm text-slate-500">No exit logs yet.</p>
-      )}
-
-      <div className="flex flex-col gap-3">
-        {logs.map((log) => (
-          <div
-            key={log.id}
-            className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4"
-          >
-            <p className="text-sm font-semibold text-slate-900">
-              {log.student_full_name}{" "}
-              <span className="text-xs font-normal text-slate-500">
-                @{log.student_username}
-              </span>
-            </p>
-            <p className="text-sm text-slate-900 mb-1">{log.reason}</p>
-            <p className="text-xs text-slate-500">Exited: {formatDateTime(log.scanned_at)}</p>
-            <p className="text-xs text-slate-500">
-              Scanned by: {log.scanned_by_full_name} (@{log.scanned_by_username})
-            </p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  const [logs, setLogs] = useState([]); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
+  useEffect(() => { apiClient.get("/hod/exit-logs").then(({ data }) => setLogs(data)).catch(() => setError("Could not load exit logs.")).finally(() => setLoading(false)); }, []);
+  return <div><div className="mb-5"><h2 className="text-xl font-bold text-slate-950">Exit logs</h2><p className="mt-1 text-sm text-slate-500">A record of every verified campus exit.</p></div>{loading ? <LoadingSkeleton rows={3} /> : error ? <p role="alert" className="rounded-lg bg-red-50 p-4 text-sm text-red-700">{error}</p> : logs.length === 0 ? <EmptyState title="No exits logged" description="Verified exits will appear here." icon={Activity} /> : <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm"><table className="min-w-[760px] w-full text-left text-sm"><thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-4 py-3">Student</th><th className="px-4 py-3">Reason</th><th className="px-4 py-3">Scanned at</th><th className="px-4 py-3">Scanned by</th></tr></thead><tbody className="divide-y divide-slate-100">{logs.map((log, index) => <tr key={log.id} className={index % 2 ? "bg-slate-50/60" : "bg-white"}><td className="px-4 py-4"><p className="font-semibold text-slate-900">{log.student_full_name}</p><p className="text-slate-500">@{log.student_username}</p></td><td className="max-w-[260px] px-4 py-4 text-slate-700">{log.reason}</td><td className="whitespace-nowrap px-4 py-4 text-slate-600">{formatDateTime(log.scanned_at)}</td><td className="px-4 py-4 text-slate-600">{log.scanned_by_full_name}<br /><span className="text-slate-400">@{log.scanned_by_username}</span></td></tr>)}</tbody></table></div>}</div>;
 }
