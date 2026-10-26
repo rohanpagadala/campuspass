@@ -1,0 +1,103 @@
+---
+# minikube refuses to run as root, and the docker role already put
+# ansible_user in the `docker` group - everything below runs as that user.
+- name: Clone or update the CampusPass repository
+  become: false
+  ansible.builtin.git:
+    repo: "{{ repo_url }}"
+    dest: "{{ repo_dest }}"
+    version: main
+    force: false
+
+- name: Build the backend image
+  become: false
+  community.docker.docker_image:
+    name: campuspass-backend
+    tag: latest
+    source: build
+    build:
+      path: "{{ repo_dest }}"
+    force_source: true
+
+- name: Build the frontend image
+  become: false
+  community.docker.docker_image:
+    name: campuspass-frontend
+    tag: latest
+    source: build
+    build:
+      path: "{{ repo_dest }}/frontend"
+    force_source: true
+
+- name: Check current minikube status
+  become: false
+  ansible.builtin.command: minikube status
+  register: campuspass_deploy_minikube_status
+  changed_when: false
+  failed_when: false
+
+- name: Start minikube
+  become: false
+  ansible.builtin.command: minikube start --driver=docker
+  when: "'Running' not in campuspass_deploy_minikube_status.stdout"
+  changed_when: true
+
+- name: Load the backend image into minikube
+  become: false
+  ansible.builtin.command: minikube image load campuspass-backend:latest
+  changed_when: true
+
+- name: Load the frontend image into minikube
+  become: false
+  ansible.builtin.command: minikube image load campuspass-frontend:latest
+  changed_when: true
+
+- name: Apply Kubernetes manifests
+  become: false
+  ansible.builtin.command: kubectl apply -f {{ repo_dest }}/k8s/
+  changed_when: true
+
+- name: Point deployments at the locally-built images
+  become: false
+  ansible.builtin.command: >
+    kubectl set image deployment/{{ item }} {{ item }}={{ item }}:latest -n campuspass
+  loop:
+    - campuspass-backend
+    - campuspass-frontend
+  changed_when: true
+
+- name: Wait for the backend rollout
+  become: false
+  ansible.builtin.command: kubectl rollout status deployment/campuspass-backend -n campuspass --timeout=180s
+  changed_when: false
+
+- name: Wait for the frontend rollout
+  become: false
+  ansible.builtin.command: kubectl rollout status deployment/campuspass-frontend -n campuspass --timeout=180s
+  changed_when: false
+
+- name: Seed the demo accounts
+  become: false
+  ansible.builtin.shell: >
+    kubectl exec -n campuspass deploy/campuspass-backend -- python -m scripts.seed
+  changed_when: true
+
+- name: Get the frontend service URL
+  become: false
+  ansible.builtin.command: minikube service campuspass-frontend -n campuspass --url
+  register: campuspass_deploy_frontend_url
+  changed_when: false
+
+- name: Verify the app responds
+  become: false
+  ansible.builtin.uri:
+    url: "{{ campuspass_deploy_frontend_url.stdout_lines[0] }}/api/health"
+    return_content: true
+  register: campuspass_deploy_health_check
+  retries: 10
+  delay: 5
+  until: campuspass_deploy_health_check.status == 200
+
+- name: Report the deployed URL
+  ansible.builtin.debug:
+    msg: "CampusPass is live at {{ campuspass_deploy_frontend_url.stdout_lines[0] }}"

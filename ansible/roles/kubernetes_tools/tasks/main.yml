@@ -1,0 +1,24 @@
+---
+- name: Check for existing kubectl
+  ansible.builtin.stat:
+    path: /usr/local/bin/kubectl
+  register: kubernetes_tools_kubectl_bin
+
+- name: Download kubectl
+  when: not kubernetes_tools_kubectl_bin.stat.exists
+  ansible.builtin.get_url:
+    url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
+    dest: /usr/local/bin/kubectl
+    mode: "0755"
+
+- name: Check for existing minikube
+  ansible.builtin.stat:
+    path: /usr/local/bin/minikube
+  register: kubernetes_tools_minikube_bin
+
+- name: Download minikube
+  when: not kubernetes_tools_minikube_bin.stat.exists
+  ansible.builtin.get_url:
+    url: "https://storage.googleapis.com/minikube/releases/{{ minikube_version }}/minikube-linux-amd64"
+    dest: /usr/local/bin/minikube
+    mode: "0755"
