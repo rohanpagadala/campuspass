@@ -145,6 +145,16 @@ which host port it's published on).
 
 To stop: `docker compose down` (add `-v` to also delete persisted data).
 
+## Frontend visual reference
+
+The frontend uses an offline Inter font, the CBIT mark, a responsive indigo/lavender
+workspace shell, and reusable status-aware cards and controls. A few checked-in
+captures from the redesign are available here:
+
+- [Login — desktop](docs/screenshots/login-1440.png)
+- [Login — mobile](docs/screenshots/login-390.png)
+- [Student dashboard — desktop](docs/screenshots/student-dashboard-1440.png)
+
 ## Run locally without Docker
 
 **Backend:**
