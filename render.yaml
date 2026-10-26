@@ -35,6 +35,12 @@ services:
         generateValue: true
       - key: SEED_SECURITY_PASSWORD
         generateValue: true
+      # One-time bootstrap flag (see app/main.py) - set to "true" for a
+      # single deploy to create the real accounts on a platform with no
+      # shell access, then flip back to "false" so it doesn't reseed (a
+      # no-op, but a wasteful one) on every restart.
+      - key: SEED_ON_STARTUP
+        value: "true"
       - key: CORS_ORIGINS
         fromService:
           type: web
@@ -62,3 +68,10 @@ services:
           property: host
       - key: BACKEND_SCHEME
         value: https
+      # Render's fromService `host` property resolves to just the service's
+      # internal slug (e.g. "campuspass-backend-mzx8"), not a publicly
+      # resolvable hostname - this completes it into the real public FQDN
+      # the frontend's nginx actually needs to reach over the internet
+      # (the free tier has no private networking). See nginx.conf.template.
+      - key: BACKEND_HOST_SUFFIX
+        value: .onrender.com

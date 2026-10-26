@@ -9,6 +9,22 @@ from app.routers import auth, hod, outpass, security
 
 Base.metadata.create_all(bind=engine)
 
+# One-time bootstrap for platforms with no shell access (e.g. Render's free
+# tier) - set SEED_ON_STARTUP=true for exactly one deploy to create the real
+# accounts, then unset it. Each created account's password is printed (only
+# here, in the deploy logs - never written anywhere persistent in this
+# environment); re-running is harmless since the underlying seed logic is
+# idempotent and only prints/creates accounts that don't already exist.
+if os.getenv("SEED_ON_STARTUP") == "true":
+    from app.database import SessionLocal
+    from scripts.seed import seed_real_users
+
+    _seed_db = SessionLocal()
+    try:
+        seed_real_users(_seed_db, [])
+    finally:
+        _seed_db.close()
+
 app = FastAPI(title="CampusPass")
 
 # Comma-separated list, e.g. "http://localhost:5173,https://campuspass.onrender.com".
