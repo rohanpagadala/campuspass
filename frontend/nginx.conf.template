@@ -1,0 +1,28 @@
+server {
+    listen 80;
+    listen [::]:80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Proxied to the backend so the built frontend never needs to know the
+    # backend's address at build time - only at container start (BACKEND_HOST
+    # / BACKEND_SCHEME env vars, substituted into this template by nginx's
+    # docker-entrypoint). BACKEND_SCHEME defaults to http (Docker Compose/K8s,
+    # same private network, no TLS needed) but is overridden to https for
+    # platforms like Render's free tier, which has no private networking -
+    # cross-service calls there must go over the public HTTPS endpoint.
+    location /api/ {
+        proxy_pass ${BACKEND_SCHEME}://${BACKEND_HOST}/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # SPA fallback - client-side routes (e.g. /student, /teacher) resolve to
+    # index.html and React Router takes it from there.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

@@ -1,0 +1,38 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-docker-compose-demo-secret-change-me}
+      DATABASE_URL: sqlite:////code/data/campuspass.db
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+    volumes:
+      - backend_data:/code/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      # In-network service name + internal port - nginx proxies /api/* here
+      # over the compose network. Unrelated to BACKEND_PORT below, which is
+      # only the host-side publish port for direct access to the API.
+      BACKEND_HOST: backend:8000
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  backend_data:
