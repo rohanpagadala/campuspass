@@ -117,6 +117,22 @@ def seed_real_users(db, credential_lines):
         create_if_missing(db, spec, password, credential_lines)
 
 
+def reset_real_user_passwords_to_username(db):
+    """Sets each real account's password to literally equal its own
+    username (admin/admin, teacher/teacher, ...). This is a deliberate,
+    explicit simplification for a personal demo/dev deployment - never do
+    this for an account that matters. Only touches the 4 REAL_USERS,
+    never the --demo accounts, and only accounts that already exist."""
+    for spec in REAL_USERS:
+        user = db.query(User).filter(User.username == spec["username"]).first()
+        if user is None:
+            print(f"skip (does not exist yet): {spec['username']}")
+            continue
+        user.hashed_password = hash_password(spec["username"])
+        db.commit()
+        print(f"password reset: {spec['username']} -> password is now '{spec['username']}'")
+
+
 def seed_demo_users(db, credential_lines):
     if os.getenv("ENVIRONMENT") == "production":
         print("Refusing to create demo accounts: ENVIRONMENT=production is set.")
@@ -154,6 +170,15 @@ def main():
             "password123). Refuses to run when ENVIRONMENT=production."
         ),
     )
+    parser.add_argument(
+        "--reset-passwords-to-username",
+        action="store_true",
+        help=(
+            "Reset each existing real account's password to literally equal "
+            "its own username. Dev/demo convenience only - never do this for "
+            "an account that matters."
+        ),
+    )
     args = parser.parse_args()
 
     Base.metadata.create_all(bind=engine)
@@ -163,6 +188,8 @@ def main():
         seed_real_users(db, credential_lines)
         if args.demo:
             seed_demo_users(db, credential_lines)
+        if args.reset_passwords_to_username:
+            reset_real_user_passwords_to_username(db)
     finally:
         db.close()
 

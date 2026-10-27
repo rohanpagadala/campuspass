@@ -25,6 +25,20 @@ if os.getenv("SEED_ON_STARTUP") == "true":
     finally:
         _seed_db.close()
 
+# Same one-time-bootstrap pattern as above, for resetting the real accounts'
+# passwords to literally equal their own usernames (dev/demo convenience -
+# see scripts/seed.py's reset_real_user_passwords_to_username docstring).
+# Set true for exactly one deploy/restart, then flip back to false.
+if os.getenv("RESET_PASSWORDS_TO_USERNAME") == "true":
+    from app.database import SessionLocal as _SessionLocal2
+    from scripts.seed import reset_real_user_passwords_to_username
+
+    _reset_db = _SessionLocal2()
+    try:
+        reset_real_user_passwords_to_username(_reset_db)
+    finally:
+        _reset_db.close()
+
 app = FastAPI(title="CampusPass")
 
 # Comma-separated list, e.g. "http://localhost:5173,https://campuspass.onrender.com".
