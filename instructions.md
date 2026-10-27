@@ -59,15 +59,8 @@ again before anything else.
 | Student | rithvikreddy27@gmail.com | in `CREDENTIALS.md` |
 | Security | security1 (username, no personal email) | in `CREDENTIALS.md` |
 
-On the public Render deployment, each password has been set to simply
-equal the username (admin/admin, teacher/teacher, etc.) — a deliberate
-convenience for this demo. **This file is public on GitHub, so the actual
-values are deliberately kept out of it even though they're short** — see
-`CREDENTIALS.md` (gitignored, never committed). Freshly-seeded local
-environments (Docker Compose, local dev, Minikube) instead get a strong
-random password per account by default; run `python -m scripts.seed
---reset-passwords-to-username` there too if you want the same simple
-passwords locally.
+Passwords are never written in this file — see `CREDENTIALS.md`
+(gitignored, never committed).
 
 ### Creating `CREDENTIALS.md`
 
