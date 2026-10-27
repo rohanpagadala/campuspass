@@ -43,6 +43,12 @@ services:
       # every subsequent restart.
       - key: SEED_ON_STARTUP
         value: "false"
+      # Same one-time-bootstrap pattern, for resetting the real accounts'
+      # passwords to equal their own usernames (dev/demo convenience - see
+      # scripts/seed.py). "true" for exactly one deploy/restart, then back
+      # to "false" the same way as SEED_ON_STARTUP above.
+      - key: RESET_PASSWORDS_TO_USERNAME
+        value: "false"
       - key: CORS_ORIGINS
         fromService:
           type: web
