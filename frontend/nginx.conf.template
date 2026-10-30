@@ -7,19 +7,15 @@ server {
 
     # Proxied to the backend so the built frontend never needs to know the
     # backend's address at build time - only at container start (BACKEND_HOST
-    # / BACKEND_SCHEME / BACKEND_HOST_SUFFIX env vars, substituted into this
+    # / BACKEND_SCHEME env vars, substituted into this
     # template by nginx's docker-entrypoint). BACKEND_SCHEME defaults to http
     # (Docker Compose/K8s, same private network, no TLS needed) but is
     # overridden to https for platforms like Render's free tier, which has no
     # private networking - cross-service calls there must go over the public
-    # HTTPS endpoint. BACKEND_HOST_SUFFIX exists because Render's Blueprint
-    # `fromService: property: host` resolves to just the service's internal
-    # slug (e.g. "campuspass-backend-mzx8"), not a publicly resolvable
-    # hostname - Render sets this to ".onrender.com" to complete it into the
-    # real public FQDN; Compose/K8s leave it empty since BACKEND_HOST is
-    # already a complete, directly-reachable address there.
+    # HTTPS endpoint. BACKEND_HOST must be the complete, directly-reachable
+    # hostname supplied by the deployment platform.
     location /api/ {
-        proxy_pass ${BACKEND_SCHEME}://${BACKEND_HOST}${BACKEND_HOST_SUFFIX}/;
+        proxy_pass ${BACKEND_SCHEME}://${BACKEND_HOST}/;
         # The Host header (and SNI below) must match the UPSTREAM's own
         # hostname, not the frontend's - when the upstream is a public
         # cross-service hop (Render), the platform's own edge/load balancer
@@ -28,7 +24,7 @@ server {
         # misroute the request there and show up as a 502. Harmless for
         # Compose/K8s, where the backend container doesn't do anything with
         # the Host header at all.
-        proxy_set_header Host ${BACKEND_HOST}${BACKEND_HOST_SUFFIX};
+        proxy_set_header Host ${BACKEND_HOST};
         proxy_ssl_server_name on;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
