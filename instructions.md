@@ -286,14 +286,12 @@ https://campuspass-backend-mzx8.onrender.com/health once and wait for a
 response before moving on.
 
 **A real gotcha hit during this deployment, in case it recurs:** the
-frontend's nginx proxies `/api/*` to the backend using an address Render
-gives it (`BACKEND_HOST`) — but that value is just the backend's internal
-slug (e.g. `campuspass-backend-mzx8`), not a complete public hostname, and
-Render's edge routing is Host-header-based. Both are already handled in
-`frontend/nginx.conf.template` (a `BACKEND_HOST_SUFFIX` completes the
-hostname, and the Host header sent upstream is the backend's own, not the
-frontend's) - mentioned here only so a future "frontend loads but /api
-calls 502" mystery doesn't have to be re-diagnosed from scratch.
+frontend's nginx proxies `/api/*` to the backend using the complete public
+hostname Render provides in `BACKEND_HOST`. Render's edge routing is
+Host-header-based, so both the upstream hostname and the Host header are
+handled in `frontend/nginx.conf.template` - mentioned here only so a future
+"frontend loads but /api calls 502" mystery doesn't have to be re-diagnosed
+from scratch.
 
 ---
 

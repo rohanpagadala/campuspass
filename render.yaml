@@ -54,8 +54,7 @@ services:
           type: web
           name: campuspass-frontend
           property: host
-        # Same fromService caveat as BACKEND_HOST_SUFFIX below: this
-        # resolves to just the frontend's internal slug, with neither a
+        # This resolves to the frontend service host, with neither a
         # scheme nor the .onrender.com suffix. Not on the critical path -
         # the frontend never calls the backend cross-origin (nginx proxies
         # /api/* server-side), so CORS only matters for direct API access
@@ -77,10 +76,3 @@ services:
           property: host
       - key: BACKEND_SCHEME
         value: https
-      # Render's fromService `host` property resolves to just the service's
-      # internal slug (e.g. "campuspass-backend-mzx8"), not a publicly
-      # resolvable hostname - this completes it into the real public FQDN
-      # the frontend's nginx actually needs to reach over the internet
-      # (the free tier has no private networking). See nginx.conf.template.
-      - key: BACKEND_HOST_SUFFIX
-        value: .onrender.com
