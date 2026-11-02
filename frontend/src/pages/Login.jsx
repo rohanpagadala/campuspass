@@ -23,7 +23,7 @@ export default function Login() {
   async function handleSubmit(event) {
     event.preventDefault(); setError(""); setSubmitting(true);
     try { const me = await login(username, password); navigate(ROLE_ROUTES[me.role] || "/login", { replace: true }); }
-    catch (err) { setError(extractApiErrorMessage(err, "Login failed. Check your username and password.")); }
+    catch (err) { setError(extractApiErrorMessage(err, "CampusPass server is unavailable. Please try again later.")); }
     finally { setSubmitting(false); }
   }
 
