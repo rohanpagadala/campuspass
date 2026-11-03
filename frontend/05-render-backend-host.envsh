@@ -1,0 +1,18 @@
+#!/bin/sh
+# Sourced by nginx's docker-entrypoint before 20-envsubst-on-templates.sh, so
+# anything exported here reaches nginx.conf.template.
+#
+# On Render, BACKEND_HOST comes from render.yaml's `fromService: property:
+# host`, which is only the backend's bare slug (e.g. "campuspass-backend-mzx8")
+# and needs BACKEND_HOST_SUFFIX=".onrender.com" to become a resolvable FQDN.
+# If that env var ever goes missing from the service (dashboard edit, service
+# recreated outside the Blueprint, ...), nginx can't resolve the upstream and
+# exits at startup ("host not found in upstream"). Render sets RENDER=true in
+# every service, so fill the suffix in ourselves when it's unset and the host
+# is clearly a bare slug. Compose/K8s never set RENDER, so they're unaffected.
+if [ -n "${RENDER:-}" ] && [ -z "${BACKEND_HOST_SUFFIX:-}" ]; then
+    case "$BACKEND_HOST" in
+        *.*) ;;
+        *) export BACKEND_HOST_SUFFIX=".onrender.com" ;;
+    esac
+fi

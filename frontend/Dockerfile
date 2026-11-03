@@ -25,6 +25,10 @@ COPY --from=build /app/dist /usr/share/nginx/html
 # build arg needed - the backend address is a runtime concern, not a
 # build-time one.
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+# Fills in BACKEND_HOST_SUFFIX on Render if it's missing - see the script.
+# Must be executable or the entrypoint skips it.
+COPY 05-render-backend-host.envsh /docker-entrypoint.d/
+RUN chmod +x /docker-entrypoint.d/05-render-backend-host.envsh
 ENV BACKEND_HOST=backend:8000
 ENV BACKEND_SCHEME=http
 

@@ -293,6 +293,13 @@ handled in `frontend/nginx.conf.template` - mentioned here only so a future
 "frontend loads but /api calls 502" mystery doesn't have to be re-diagnosed
 from scratch.
 
+If `BACKEND_HOST_SUFFIX` ever goes missing from the frontend service's
+environment, the frontend deploy fails with `host not found in upstream
+"campuspass-backend-mzx8"`. `frontend/05-render-backend-host.envsh` now
+guards against that: on Render (which sets `RENDER=true` in every service)
+it fills the suffix in itself whenever it's unset and `BACKEND_HOST` is a
+bare slug.
+
 ---
 
 ## 5. Test checklist
