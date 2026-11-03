@@ -31,6 +31,7 @@ COPY 05-render-backend-host.envsh /docker-entrypoint.d/
 RUN chmod +x /docker-entrypoint.d/05-render-backend-host.envsh
 ENV BACKEND_HOST=backend:8000
 ENV BACKEND_SCHEME=http
+ENV BACKEND_HOST_SUFFIX=""
 
 EXPOSE 80
 
